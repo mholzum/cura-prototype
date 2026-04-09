@@ -394,6 +394,7 @@ window.addEventListener('DOMContentLoaded', () => {
   if (state.setup) {
     document.getElementById('onboarding').classList.add('hidden');
     document.getElementById('main-app').classList.remove('hidden');
+    document.querySelector('.app').style.justifyContent = 'flex-start';
     renderContextTags();
     renderFeed();
     updateScore();
@@ -476,6 +477,7 @@ function startApp() {
   save();
   document.getElementById('onboarding').classList.add('hidden');
   document.getElementById('main-app').classList.remove('hidden');
+  document.querySelector('.app').style.justifyContent = 'flex-start';
   activeCtx = state.contexts[0];
   renderContextTags();
   renderFeed();
