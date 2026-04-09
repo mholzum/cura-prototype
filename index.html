@@ -377,7 +377,8 @@
 <script>
 // ─── STATE ───────────────────────────────────────────────
 const STATE_KEY = 'cura_v2';
-let state = { setup: false, contexts: [], items: [], notificationsGranted: false };
+const DEFAULT_CONTEXTS = ["Aphrodite", "Feybl", "Built to Last", "Cura", "Old Town", "POLLY"];
+let state = { setup: false, contexts: [...DEFAULT_CONTEXTS], items: [], notificationsGranted: false };
 let apiKey = null; // never persisted
 let activeCtx = null;
 let currentFilter = 'all';
@@ -391,7 +392,8 @@ function load() {
 // ─── INIT ─────────────────────────────────────────────────
 load();
 window.addEventListener('DOMContentLoaded', () => {
-  if (state.setup) {
+  if (state.setup || state.contexts.length > 0) {
+    if (!state.setup) { state.setup = true; save(); }
     document.getElementById('onboarding').classList.add('hidden');
     document.getElementById('main-app').classList.remove('hidden');
     document.querySelector('.app').style.justifyContent = 'flex-start';
