@@ -1,0 +1,867 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0f0e0c">
+<title>CURA</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=DM+Mono:wght@300;400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0f0e0c;
+    --surface: #1a1917;
+    --surface2: #242220;
+    --border: #2e2c29;
+    --text: #e8e4de;
+    --muted: #6b6760;
+    --accent: #c9a96e;
+    --accent2: #e8d0a0;
+    --open: #c9a96e;
+    --closed: #7a9eb5;
+    --warn: #b5693a;
+    --font-display: 'Bebas Neue', sans-serif;
+    --font-body: 'Libre Baskerville', serif;
+    --font-mono: 'DM Mono', monospace;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html { height: 100%; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 1000;
+    opacity: 0.4;
+  }
+
+  .app { max-width: 680px; margin: 0 auto; padding: 0 20px 120px; }
+
+  /* HEADER */
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 32px 0 24px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 28px;
+  }
+
+  .wordmark { line-height: 1; display: flex; align-items: center; }
+  .wordmark svg { display: block; }
+
+  .header-right { display: flex; align-items: center; gap: 20px; }
+
+  .cycle-score { text-align: right; }
+  .cycle-score .numbers { font-family: var(--font-mono); font-size: 11px; color: var(--muted); letter-spacing: 0.05em; }
+  .cycle-score .ratio { font-family: var(--font-display); font-size: 28px; letter-spacing: 2px; line-height: 1; }
+  .ratio-open { color: var(--accent); }
+  .ratio-closed { color: var(--closed); }
+
+  /* API KEY SETUP */
+  .api-setup {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    padding: 28px;
+    margin-bottom: 24px;
+  }
+
+  .api-setup h2 { font-family: var(--font-display); font-size: 24px; letter-spacing: 3px; color: var(--accent); margin-bottom: 10px; }
+  .api-setup p { font-size: 13px; line-height: 1.7; color: var(--muted); font-style: italic; margin-bottom: 16px; }
+
+  .api-row { display: flex; gap: 8px; }
+
+  .api-note {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--muted);
+    margin-top: 8px;
+    letter-spacing: 0.05em;
+  }
+
+  /* ONBOARDING */
+  .onboarding { background: var(--surface); border: 1px solid var(--border); border-radius: 2px; padding: 28px; margin-bottom: 24px; }
+  .onboarding h2 { font-family: var(--font-display); font-size: 24px; letter-spacing: 3px; color: var(--accent); margin-bottom: 10px; }
+  .onboarding p { font-size: 13px; line-height: 1.7; color: var(--muted); margin-bottom: 20px; font-style: italic; }
+  .context-input-row { display: flex; gap: 8px; margin-bottom: 12px; }
+  .context-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; min-height: 36px; }
+  .chip { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; padding: 6px 12px; background: var(--surface2); border: 1px solid var(--border); border-radius: 2px; color: var(--text); cursor: pointer; transition: all 0.15s; display: flex; align-items: center; gap: 6px; }
+  .chip:hover { border-color: var(--accent); color: var(--accent); }
+  .chip .remove { color: var(--muted); font-size: 14px; line-height: 1; }
+
+  /* INPUTS */
+  input[type="text"], input[type="password"], textarea {
+    background: var(--surface2); border: 1px solid var(--border); border-radius: 2px;
+    color: var(--text); font-family: var(--font-body); font-size: 15px;
+    padding: 12px 14px; width: 100%; outline: none; transition: border-color 0.15s; -webkit-appearance: none;
+  }
+  input[type="text"]:focus, input[type="password"]:focus, textarea:focus { border-color: var(--accent); }
+  input::placeholder, textarea::placeholder { color: var(--muted); font-style: italic; }
+
+  /* BUTTONS */
+  .btn { font-family: var(--font-display); font-size: 16px; letter-spacing: 3px; padding: 12px 24px; border: none; border-radius: 2px; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+  .btn-primary { background: var(--accent); color: var(--bg); }
+  .btn-primary:hover { background: var(--accent2); }
+  .btn-ghost { background: transparent; color: var(--muted); border: 1px solid var(--border); font-size: 13px; letter-spacing: 2px; padding: 10px 16px; }
+  .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-full { width: 100%; }
+
+  /* CAPTURE */
+  .capture-section { margin-bottom: 32px; }
+  .capture-label { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.12em; color: var(--muted); text-transform: uppercase; margin-bottom: 10px; }
+  .capture-box { background: var(--surface); border: 1px solid var(--border); border-radius: 2px; padding: 20px; transition: border-color 0.15s; }
+  .capture-box:focus-within { border-color: var(--accent); }
+  .capture-box textarea { background: transparent; border: none; padding: 0; font-size: 16px; line-height: 1.7; resize: none; min-height: 80px; }
+  .capture-box textarea:focus { border: none; }
+  .capture-footer { display: flex; align-items: center; justify-content: space-between; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border); flex-wrap: wrap; gap: 10px; }
+  .context-selector { display: flex; gap: 6px; flex-wrap: wrap; }
+  .ctx-tag { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.08em; padding: 5px 10px; border-radius: 2px; border: 1px solid var(--border); background: transparent; color: var(--muted); cursor: pointer; transition: all 0.15s; }
+  .ctx-tag.active { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+  .capture-actions { display: flex; gap: 8px; align-items: center; }
+  .attach-btn { background: transparent; border: 1px solid var(--border); border-radius: 2px; color: var(--muted); padding: 8px 10px; cursor: pointer; font-size: 16px; transition: all 0.15s; line-height: 1; }
+  .attach-btn:hover { border-color: var(--accent); color: var(--accent); }
+  #file-input { display: none; }
+
+  /* AI PROCESSING */
+  .processing {
+    display: flex; align-items: center; gap: 10px;
+    padding: 12px 16px; background: var(--surface); border: 1px solid var(--border);
+    border-radius: 2px; margin-bottom: 10px; font-size: 13px; color: var(--muted);
+    font-style: italic; animation: slideIn 0.2s ease;
+  }
+
+  .processing-dot {
+    width: 6px; height: 6px; border-radius: 50%; background: var(--accent);
+    animation: pulse 1s infinite;
+    flex-shrink: 0;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.7); }
+  }
+
+  /* FEED */
+  .feed-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; flex-wrap: wrap; gap: 10px; }
+  .feed-title { font-family: var(--font-display); font-size: 22px; letter-spacing: 3px; color: var(--text); }
+  .filter-row { display: flex; gap: 6px; flex-wrap: wrap; }
+  .filter-btn { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.08em; padding: 5px 10px; border-radius: 2px; border: 1px solid var(--border); background: transparent; color: var(--muted); cursor: pointer; transition: all 0.15s; }
+  .filter-btn.active { border-color: var(--text); color: var(--text); }
+
+  /* ITEMS */
+  .item { background: var(--surface); border: 1px solid var(--border); border-radius: 2px; padding: 18px 20px; margin-bottom: 10px; transition: all 0.15s; position: relative; animation: slideIn 0.25s ease; }
+  @keyframes slideIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
+  .item.open { border-left: 3px solid var(--open); }
+  .item.closed { border-left: 3px solid var(--closed); opacity: 0.55; }
+  .item.stale { border-left: 3px solid var(--warn); }
+
+  .item-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+  .item-content { font-size: 15px; line-height: 1.65; color: var(--text); flex: 1; word-break: break-word; }
+  .item-content a { color: var(--accent2); text-decoration: none; border-bottom: 1px solid var(--border); }
+  .item-content a:hover { border-color: var(--accent2); }
+
+  /* AI INSIGHT */
+  .ai-insight {
+    margin-top: 10px; padding: 10px 14px;
+    background: var(--surface2); border-left: 2px solid var(--accent);
+    border-radius: 0 2px 2px 0;
+    font-size: 13px; line-height: 1.6; color: var(--muted);
+    font-style: italic;
+  }
+
+  .ai-insight .insight-label {
+    font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.1em;
+    color: var(--accent); text-transform: uppercase; margin-bottom: 4px;
+    font-style: normal;
+  }
+
+  /* URGENCY INDICATOR */
+  .urgency-high .ai-insight { border-left-color: var(--warn); }
+  .urgency-high .ai-insight .insight-label { color: var(--warn); }
+
+  .item-meta { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
+  .item-ctx { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.08em; padding: 3px 8px; background: var(--surface2); border-radius: 2px; color: var(--accent); }
+  .item-time { font-family: var(--font-mono); font-size: 10px; color: var(--muted); letter-spacing: 0.05em; }
+  .item-status { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.08em; padding: 3px 8px; border-radius: 2px; }
+  .status-open { background: rgba(201, 169, 110, 0.15); color: var(--open); }
+  .status-closed { background: rgba(122, 158, 181, 0.15); color: var(--closed); }
+  .status-stale { background: rgba(181, 105, 58, 0.15); color: var(--warn); }
+
+  .item-actions { display: flex; gap: 6px; flex-shrink: 0; }
+  .action-btn { background: transparent; border: 1px solid var(--border); border-radius: 2px; color: var(--muted); padding: 6px 8px; cursor: pointer; font-size: 13px; transition: all 0.15s; line-height: 1; }
+  .action-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .action-btn.close-btn:hover { border-color: var(--closed); color: var(--closed); }
+
+  /* SCREENSHOT */
+  .screenshot-preview { margin-top: 10px; position: relative; display: inline-block; }
+  .screenshot-preview img { max-width: 100%; max-height: 200px; border-radius: 2px; border: 1px solid var(--border); display: block; }
+  .screenshot-remove { position: absolute; top: 4px; right: 4px; background: var(--bg); border: 1px solid var(--border); border-radius: 2px; color: var(--muted); cursor: pointer; padding: 2px 6px; font-size: 12px; line-height: 1.4; }
+
+  /* WEEKLY DIGEST */
+  .digest-btn {
+    font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.1em;
+    padding: 6px 12px; background: transparent; border: 1px solid var(--border);
+    border-radius: 2px; color: var(--muted); cursor: pointer; transition: all 0.15s;
+  }
+  .digest-btn:hover { border-color: var(--closed); color: var(--closed); }
+
+  .digest-panel {
+    background: var(--surface); border: 1px solid var(--closed);
+    border-radius: 2px; padding: 24px; margin-bottom: 24px;
+    animation: slideIn 0.3s ease;
+  }
+
+  .digest-panel h3 { font-family: var(--font-display); font-size: 20px; letter-spacing: 3px; color: var(--closed); margin-bottom: 16px; }
+  .digest-body { font-size: 14px; line-height: 1.8; color: var(--text); white-space: pre-wrap; }
+  .digest-close { margin-top: 16px; }
+
+  /* PUSH BANNER */
+  .push-banner { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--surface); border: 1px solid var(--accent); border-radius: 2px; padding: 14px 20px; display: flex; align-items: center; gap: 14px; max-width: 520px; width: calc(100% - 40px); z-index: 100; box-shadow: 0 8px 32px rgba(0,0,0,0.6); animation: bannerIn 0.3s ease; }
+  @keyframes bannerIn { from { opacity: 0; transform: translateX(-50%) translateY(16px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
+  .push-icon { font-size: 20px; flex-shrink: 0; }
+  .push-text { flex: 1; font-size: 13px; line-height: 1.5; color: var(--text); font-style: italic; }
+  .push-dismiss { background: transparent; border: none; color: var(--muted); cursor: pointer; font-size: 18px; line-height: 1; flex-shrink: 0; }
+
+  /* NOTIF BAR */
+  .notif-bar { background: var(--surface); border: 1px solid var(--warn); border-radius: 2px; padding: 12px 16px; margin-bottom: 20px; display: flex; align-items: center; gap: 12px; font-size: 13px; color: var(--muted); font-style: italic; }
+  .notif-bar button { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.08em; padding: 6px 12px; background: var(--warn); border: none; border-radius: 2px; color: var(--bg); cursor: pointer; white-space: nowrap; flex-shrink: 0; }
+
+  /* EMPTY */
+  .empty { text-align: center; padding: 60px 20px; color: var(--muted); }
+  .empty .big { font-family: var(--font-display); font-size: 64px; letter-spacing: 4px; opacity: 0.2; margin-bottom: 16px; }
+  .empty p { font-size: 14px; font-style: italic; line-height: 1.7; }
+
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .hidden { display: none !important; }
+
+  /* AI STATUS */
+  .ai-status {
+    font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.08em;
+    padding: 4px 10px; border-radius: 2px; border: 1px solid var(--border);
+    color: var(--muted); cursor: pointer; background: transparent; transition: all 0.15s;
+  }
+  .ai-status.connected { border-color: var(--closed); color: var(--closed); }
+  .ai-status:hover { border-color: var(--accent); color: var(--accent); }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="wordmark">
+      <svg width="160" height="52" viewBox="0 0 160 52" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <text x="0" y="46" font-family="Bebas Neue, sans-serif" font-size="52" fill="#c9a96e" opacity="0.5">C</text>
+        <text x="31" y="46" font-family="Bebas Neue, sans-serif" font-size="52" fill="#e8e4de" opacity="0.58">U</text>
+        <text x="62" y="46" font-family="Bebas Neue, sans-serif" font-size="52" fill="#e8e4de" opacity="0.78">R</text>
+        <text x="91" y="46" font-family="Bebas Neue, sans-serif" font-size="52" fill="#7a9eb5" opacity="1">A</text>
+        <line x1="2" y1="50" x2="26" y2="50" stroke="#c9a96e" stroke-width="1" opacity="0.35"/>
+        <line x1="31" y1="50" x2="58" y2="50" stroke="#e8e4de" stroke-width="1.2" opacity="0.36"/>
+        <line x1="62" y1="50" x2="88" y2="50" stroke="#e8e4de" stroke-width="1.5" opacity="0.58"/>
+        <line x1="91" y1="50" x2="128" y2="50" stroke="#7a9eb5" stroke-width="2.5" opacity="1"/>
+      </svg>
+    </div>
+    <div class="header-right">
+      <button class="ai-status" id="ai-status-btn" onclick="toggleAPISetup()">AI: OFF</button>
+      <div class="cycle-score">
+        <div class="numbers">OPEN / CLOSED</div>
+        <div class="ratio">
+          <span class="ratio-open" id="open-count">0</span>
+          <span style="color:var(--border)"> / </span>
+          <span class="ratio-closed" id="closed-count">0</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- NOTIFICATION BAR -->
+  <div class="notif-bar hidden" id="notif-bar">
+    <span>⚡</span>
+    <span>Enable notifications so Cura can push back at you.</span>
+    <button onclick="requestNotifications()">ENABLE</button>
+  </div>
+
+  <!-- API KEY SETUP -->
+  <div class="api-setup hidden" id="api-setup">
+    <h2>CONNECT AI</h2>
+    <p>Your API key lives only in this browser session — never sent anywhere except directly to Anthropic. Get yours at console.anthropic.com.</p>
+    <div class="api-row">
+      <input type="password" id="api-key-input" placeholder="sk-ant-..." autocomplete="off">
+      <button class="btn btn-primary" onclick="saveAPIKey()">CONNECT</button>
+    </div>
+    <div class="api-note">// stored in memory only. clears on tab close.</div>
+  </div>
+
+  <!-- ONBOARDING -->
+  <div class="onboarding" id="onboarding">
+    <h2>YOUR CONTEXTS</h2>
+    <p>What worlds are you running right now? These become the lenses everything gets filtered through.</p>
+    <div class="context-input-row">
+      <input type="text" id="ctx-input" placeholder="e.g. Launch System, Old Town, Feybl..." maxlength="30">
+      <button class="btn btn-primary" onclick="addContext()">ADD</button>
+    </div>
+    <div class="context-chips" id="context-chips"></div>
+    <button class="btn btn-primary btn-full hidden" id="start-btn" onclick="startApp()">START →</button>
+  </div>
+
+  <!-- MAIN APP -->
+  <div id="main-app" class="hidden">
+
+    <!-- CAPTURE -->
+    <div class="capture-section">
+      <div class="capture-label">// DUMP ANYTHING</div>
+      <div class="capture-box">
+        <textarea id="capture-input" placeholder="Thought, link, idea, task — whatever's in your head." rows="3"></textarea>
+        <div id="screenshot-preview-area"></div>
+        <div class="capture-footer">
+          <div class="context-selector" id="active-contexts"></div>
+          <div class="capture-actions">
+            <label class="attach-btn" for="file-input" title="Attach screenshot">📎</label>
+            <input type="file" id="file-input" accept="image/*" onchange="handleScreenshot(event)">
+            <button class="btn btn-primary" onclick="capture()">CAPTURE</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- FEED -->
+    <div>
+      <div class="feed-header">
+        <div class="feed-title">CYCLES</div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <button class="digest-btn" onclick="generateDigest()">WEEKLY DIGEST</button>
+          <div class="filter-row">
+            <button class="filter-btn active" onclick="setFilter('all', this)">ALL</button>
+            <button class="filter-btn" onclick="setFilter('open', this)">OPEN</button>
+            <button class="filter-btn" onclick="setFilter('stale', this)">STALE</button>
+            <button class="filter-btn" onclick="setFilter('closed', this)">CLOSED</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="digest-panel" class="digest-panel hidden">
+        <h3>WEEKLY DIGEST</h3>
+        <div class="digest-body" id="digest-body"></div>
+        <button class="btn btn-ghost digest-close" onclick="closeDigest()">CLOSE</button>
+      </div>
+
+      <div id="feed"></div>
+    </div>
+  </div>
+</div>
+
+<!-- PUSH BANNER -->
+<div class="push-banner hidden" id="push-banner">
+  <div class="push-icon">⚡</div>
+  <div class="push-text" id="push-text"></div>
+  <button class="push-dismiss" onclick="dismissPush()">×</button>
+</div>
+
+<script>
+// ─── STATE ───────────────────────────────────────────────
+const STATE_KEY = 'cura_v2';
+let state = { setup: false, contexts: [], items: [], notificationsGranted: false };
+let apiKey = null; // never persisted
+let activeCtx = null;
+let currentFilter = 'all';
+let pendingScreenshot = null;
+
+function save() { localStorage.setItem(STATE_KEY, JSON.stringify(state)); }
+function load() {
+  try { const r = localStorage.getItem(STATE_KEY); if (r) state = { ...state, ...JSON.parse(r) }; } catch(e) {}
+}
+
+// ─── INIT ─────────────────────────────────────────────────
+load();
+window.addEventListener('DOMContentLoaded', () => {
+  if (state.setup) {
+    document.getElementById('onboarding').classList.add('hidden');
+    document.getElementById('main-app').classList.remove('hidden');
+    renderContextTags();
+    renderFeed();
+    updateScore();
+    checkNotificationPermission();
+    scheduleStaleCheck();
+    schedulePushReminder();
+  }
+});
+
+// ─── API ──────────────────────────────────────────────────
+function toggleAPISetup() {
+  const panel = document.getElementById('api-setup');
+  panel.classList.toggle('hidden');
+}
+
+function saveAPIKey() {
+  const val = document.getElementById('api-key-input').value.trim();
+  if (!val.startsWith('sk-ant-')) {
+    showPush('That doesn\'t look like a valid Anthropic key. Check console.anthropic.com.');
+    return;
+  }
+  apiKey = val;
+  document.getElementById('api-key-input').value = '';
+  document.getElementById('api-setup').classList.add('hidden');
+  const btn = document.getElementById('ai-status-btn');
+  btn.textContent = 'AI: ON';
+  btn.classList.add('connected');
+  showPush('AI connected. Cura is now thinking with you.');
+}
+
+async function callClaude(systemPrompt, userMessage) {
+  if (!apiKey) return null;
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 400,
+        system: systemPrompt,
+        messages: [{ role: 'user', content: userMessage }]
+      })
+    });
+    const data = await res.json();
+    return data?.content?.[0]?.text || null;
+  } catch(e) { return null; }
+}
+
+// ─── CONTEXT SETUP ────────────────────────────────────────
+function addContext() {
+  const input = document.getElementById('ctx-input');
+  const val = input.value.trim();
+  if (!val || state.contexts.includes(val)) { input.value = ''; return; }
+  state.contexts.push(val);
+  input.value = '';
+  renderChips();
+  save();
+}
+
+document.getElementById('ctx-input').addEventListener('keydown', e => { if (e.key === 'Enter') addContext(); });
+
+function removeContext(ctx) {
+  state.contexts = state.contexts.filter(c => c !== ctx);
+  renderChips();
+  save();
+}
+
+function renderChips() {
+  const el = document.getElementById('context-chips');
+  el.innerHTML = state.contexts.map(c =>
+    `<div class="chip">${c}<span class="remove" onclick="removeContext('${c.replace(/'/g,"\\'")}')">×</span></div>`
+  ).join('');
+  const btn = document.getElementById('start-btn');
+  btn.classList.toggle('hidden', state.contexts.length === 0);
+}
+
+function startApp() {
+  if (state.contexts.length === 0) return;
+  state.setup = true;
+  save();
+  document.getElementById('onboarding').classList.add('hidden');
+  document.getElementById('main-app').classList.remove('hidden');
+  activeCtx = state.contexts[0];
+  renderContextTags();
+  renderFeed();
+  updateScore();
+  checkNotificationPermission();
+  scheduleStaleCheck();
+}
+
+// ─── CAPTURE ──────────────────────────────────────────────
+function renderContextTags() {
+  const el = document.getElementById('active-contexts');
+  if (!activeCtx) activeCtx = state.contexts[0];
+  el.innerHTML = state.contexts.map(c =>
+    `<button class="ctx-tag ${c === activeCtx ? 'active' : ''}" onclick="setActiveCtx('${c.replace(/'/g,"\\'")}', this)">${c}</button>`
+  ).join('');
+}
+
+function setActiveCtx(ctx, btn) {
+  activeCtx = ctx;
+  document.querySelectorAll('.ctx-tag').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+function handleScreenshot(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    pendingScreenshot = e.target.result;
+    document.getElementById('screenshot-preview-area').innerHTML = `
+      <div class="screenshot-preview">
+        <img src="${pendingScreenshot}" alt="screenshot">
+        <button class="screenshot-remove" onclick="clearScreenshot()">×</button>
+      </div>`;
+  };
+  reader.readAsDataURL(file);
+}
+
+function clearScreenshot() {
+  pendingScreenshot = null;
+  document.getElementById('screenshot-preview-area').innerHTML = '';
+  document.getElementById('file-input').value = '';
+}
+
+async function capture() {
+  const input = document.getElementById('capture-input');
+  const text = input.value.trim();
+  if (!text && !pendingScreenshot) return;
+
+  const item = {
+    id: Date.now(),
+    content: text,
+    screenshot: pendingScreenshot,
+    context: activeCtx,
+    status: 'open',
+    urgency: 'normal',
+    insight: null,
+    createdAt: Date.now(),
+    updatedAt: Date.now()
+  };
+
+  state.items.unshift(item);
+  save();
+  input.value = '';
+  clearScreenshot();
+  renderFeed();
+  updateScore();
+
+  // Visual feedback
+  const box = document.querySelector('.capture-box');
+  box.style.borderColor = 'var(--closed)';
+  setTimeout(() => box.style.borderColor = '', 600);
+
+  // AI processing
+  if (apiKey && text) {
+    processWithAI(item);
+  }
+}
+
+document.getElementById('capture-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) capture();
+});
+
+// ─── AI PROCESSING ────────────────────────────────────────
+async function processWithAI(item) {
+  // Show processing state
+  const itemEl = document.getElementById(`item-${item.id}`);
+  if (itemEl) {
+    const processingEl = document.createElement('div');
+    processingEl.className = 'processing';
+    processingEl.id = `processing-${item.id}`;
+    processingEl.innerHTML = '<div class="processing-dot"></div><span>thinking...</span>';
+    itemEl.appendChild(processingEl);
+  }
+
+  const openItems = state.items
+    .filter(i => i.status !== 'closed' && i.id !== item.id)
+    .slice(0, 10)
+    .map(i => `- [${i.context}] ${i.content} (${formatAge(i.createdAt)} old)`)
+    .join('\n');
+
+  const system = `You are Cura — a knowing, wise executive assistant embedded in a personal information system. You are not just intelligent, you are wise. You understand timing, urgency, and human psychology. You know when to push and when to wait.
+
+The user's active contexts are: ${state.contexts.join(', ')}.
+
+Your job: analyze each captured item and return a JSON response with exactly these fields:
+- insight: A single sharp sentence. Not a summary — a perspective. What does this item mean in the context of their life right now? What action does it imply? What pattern does it continue? Be direct, be specific, be occasionally uncomfortable if the truth requires it. Max 20 words.
+- urgency: "high", "normal", or "low"
+- suggestedContext: which of their contexts this belongs to most
+
+Return ONLY valid JSON. No preamble, no explanation.`;
+
+  const userMsg = `New capture: "${item.content}"
+Context tagged: ${item.context}
+Their other open cycles:\n${openItems || 'none yet'}`;
+
+  const response = await callClaude(system, userMsg);
+
+  // Remove processing indicator
+  const processingEl = document.getElementById(`processing-${item.id}`);
+  if (processingEl) processingEl.remove();
+
+  if (response) {
+    try {
+      const clean = response.replace(/```json|```/g, '').trim();
+      const parsed = JSON.parse(clean);
+      const idx = state.items.findIndex(i => i.id === item.id);
+      if (idx !== -1) {
+        state.items[idx].insight = parsed.insight || null;
+        state.items[idx].urgency = parsed.urgency || 'normal';
+        if (parsed.suggestedContext && state.contexts.includes(parsed.suggestedContext)) {
+          state.items[idx].context = parsed.suggestedContext;
+        }
+        save();
+        renderFeed();
+
+        // Smart push for high urgency
+        if (parsed.urgency === 'high') {
+          showPush(parsed.insight || 'High priority item just captured.');
+        }
+      }
+    } catch(e) {}
+  }
+}
+
+// ─── WEEKLY DIGEST ────────────────────────────────────────
+async function generateDigest() {
+  if (!apiKey) {
+    showPush('Connect AI first to generate your digest.');
+    toggleAPISetup();
+    return;
+  }
+
+  const panel = document.getElementById('digest-panel');
+  const body = document.getElementById('digest-body');
+  panel.classList.remove('hidden');
+  body.textContent = 'Reading your patterns...';
+
+  const allItems = state.items.slice(0, 50);
+  const open = allItems.filter(i => i.status === 'open');
+  const stale = allItems.filter(i => i.status === 'stale');
+  const closed = allItems.filter(i => i.status === 'closed');
+
+  const itemsSummary = allItems.map(i =>
+    `[${i.status.toUpperCase()}][${i.context}] ${i.content} — captured ${formatAge(i.createdAt)}`
+  ).join('\n');
+
+  const system = `You are Cura — a wise executive assistant who has been watching this person's information patterns. You are honest, direct, and occasionally uncomfortable when the truth requires it. You do not flatter. You do not hedge. You see patterns humans miss about themselves.
+
+Generate a weekly digest. Be a mirror, not a cheerleader. Point to the patterns. Name what they've been avoiding. Celebrate what they actually closed. Tell them what the data says about where their real energy is going versus where they say it's going.
+
+Write in second person. Short paragraphs. Direct sentences. No bullet points. Max 200 words.`;
+
+  const userMsg = `Here are their cycles from the past week:
+Contexts: ${state.contexts.join(', ')}
+Open: ${open.length} | Stale: ${stale.length} | Closed: ${closed.length}
+
+All items:
+${itemsSummary}`;
+
+  const response = await callClaude(system, userMsg);
+  body.textContent = response || 'Could not generate digest. Check your API connection.';
+}
+
+function closeDigest() {
+  document.getElementById('digest-panel').classList.add('hidden');
+}
+
+// ─── FEED ─────────────────────────────────────────────────
+function setFilter(f, btn) {
+  currentFilter = f;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderFeed();
+}
+
+function renderFeed() {
+  checkStaleness();
+  const feed = document.getElementById('feed');
+  let items = [...state.items];
+
+  if (currentFilter !== 'all') {
+    items = items.filter(i => i.status === currentFilter);
+  }
+
+  // Sort: stale first, then open by urgency, then closed
+  items.sort((a, b) => {
+    const order = { stale: 0, open: 1, closed: 2 };
+    if (order[a.status] !== order[b.status]) return order[a.status] - order[b.status];
+    if (a.urgency === 'high' && b.urgency !== 'high') return -1;
+    if (b.urgency === 'high' && a.urgency !== 'high') return 1;
+    return b.createdAt - a.createdAt;
+  });
+
+  if (items.length === 0) {
+    feed.innerHTML = `<div class="empty"><div class="big">∅</div><p>${currentFilter === 'all' ? 'Nothing captured yet.<br>Drop something above.' : `No ${currentFilter} cycles.`}</p></div>`;
+    return;
+  }
+
+  feed.innerHTML = items.map(item => {
+    const screenshot = item.screenshot
+      ? `<div style="margin-top:10px"><img src="${item.screenshot}" style="max-width:100%;max-height:160px;border-radius:2px;border:1px solid var(--border);display:block"></div>`
+      : '';
+
+    const insightHtml = item.insight
+      ? `<div class="ai-insight"><div class="insight-label">// cura</div>${escapeHtml(item.insight)}</div>`
+      : '';
+
+    const urgencyClass = item.urgency === 'high' ? 'urgency-high' : '';
+    const statusLabel = item.status === 'stale' ? 'STALE' : item.status.toUpperCase();
+
+    return `
+      <div class="item ${item.status} ${urgencyClass}" id="item-${item.id}">
+        <div class="item-top">
+          <div class="item-content">${formatContent(item.content)}${screenshot}${insightHtml}</div>
+          <div class="item-actions">
+            ${item.status !== 'closed' ? `<button class="action-btn close-btn" onclick="closeItem(${item.id})" title="Close cycle">✓</button>` : ''}
+            <button class="action-btn" onclick="deleteItem(${item.id})" title="Delete">×</button>
+          </div>
+        </div>
+        <div class="item-meta">
+          ${item.context ? `<span class="item-ctx">${escapeHtml(item.context)}</span>` : ''}
+          <span class="item-time">${formatAge(item.createdAt)}</span>
+          <span class="item-status status-${item.status}">${statusLabel}</span>
+          ${item.urgency === 'high' ? '<span class="item-status" style="background:rgba(181,105,58,0.15);color:var(--warn)">HIGH</span>' : ''}
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function escapeHtml(str) {
+  if (!str) return '';
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function formatContent(text) {
+  if (!text) return '';
+  const urlRegex = /(https?:\/\/[^\s]+)/g;
+  return escapeHtml(text).replace(urlRegex, url =>
+    `<a href="${url}" target="_blank" rel="noopener">${url.length > 50 ? url.substring(0, 50) + '…' : url}</a>`
+  ).replace(/\n/g, '<br>');
+}
+
+function formatAge(ts) {
+  const diff = Date.now() - ts;
+  const m = Math.floor(diff / 60000);
+  const h = Math.floor(diff / 3600000);
+  const d = Math.floor(diff / 86400000);
+  if (m < 1) return 'just now';
+  if (m < 60) return `${m}m ago`;
+  if (h < 24) return `${h}h ago`;
+  return `${d}d ago`;
+}
+
+function closeItem(id) {
+  const item = state.items.find(i => i.id === id);
+  if (item) {
+    item.status = 'closed';
+    item.updatedAt = Date.now();
+    save();
+    renderFeed();
+    updateScore();
+
+    const closedCount = state.items.filter(i => i.status === 'closed').length;
+    if (apiKey) {
+      generateClosePush(item, closedCount);
+    } else {
+      showPush(`Cycle closed. Iron moving. ${closedCount} closed total.`);
+    }
+  }
+}
+
+async function generateClosePush(item, closedCount) {
+  const system = `You are Cura. Someone just closed a cycle. Give them one sentence of acknowledgment. Be real, not cheerleader-ish. Reference what they closed if it's interesting. Max 15 words. No quotes around your response.`;
+  const response = await callClaude(system, `They just closed: "${item.content}" (${item.context}). Total closed: ${closedCount}.`);
+  showPush(response || `Cycle closed. ${closedCount} total.`);
+}
+
+function deleteItem(id) {
+  state.items = state.items.filter(i => i.id !== id);
+  save();
+  renderFeed();
+  updateScore();
+}
+
+// ─── SCORE ────────────────────────────────────────────────
+function updateScore() {
+  document.getElementById('open-count').textContent = state.items.filter(i => i.status !== 'closed').length;
+  document.getElementById('closed-count').textContent = state.items.filter(i => i.status === 'closed').length;
+}
+
+// ─── STALENESS ────────────────────────────────────────────
+function checkStaleness() {
+  state.items = state.items.map(i => {
+    if (i.status === 'open' && (Date.now() - i.createdAt) > 48 * 60 * 60 * 1000) {
+      return { ...i, status: 'stale' };
+    }
+    return i;
+  });
+  save();
+}
+
+function scheduleStaleCheck() {
+  setInterval(() => { checkStaleness(); renderFeed(); updateScore(); }, 60 * 1000);
+}
+
+// ─── SMART PUSH ───────────────────────────────────────────
+async function generateSmartPush() {
+  if (!apiKey) { showPush(getBasicPush()); return; }
+
+  const open = state.items.filter(i => i.status !== 'closed');
+  if (open.length === 0) return;
+
+  const stale = open.filter(i => i.status === 'stale');
+  const itemsSummary = open.slice(0, 8).map(i => `[${i.context}] ${i.content} (${formatAge(i.createdAt)})`).join('\n');
+
+  const system = `You are Cura pushing back at someone who hasn't checked in for a while. You've been watching their open cycles. Pick the one thing most worth their attention right now and tell them why — specifically, wisely. One sentence. Direct. No fluff. Max 20 words.`;
+  const response = await callClaude(system, `Open cycles:\n${itemsSummary}\nStale count: ${stale.length}`);
+  if (response) showPush(response);
+}
+
+function getBasicPush() {
+  const open = state.items.filter(i => i.status !== 'closed').length;
+  const stale = state.items.filter(i => i.status === 'stale').length;
+  if (stale > 0) return `${stale} cycle${stale > 1 ? 's' : ''} going stale. Iron rusts if unused.`;
+  if (open > 5) return `${open} open cycles. What's one you can close right now?`;
+  return `${open} open cycle${open !== 1 ? 's' : ''} waiting.`;
+}
+
+function schedulePushReminder() {
+  setInterval(() => { if (state.items.filter(i => i.status !== 'closed').length > 0) generateSmartPush(); }, 4 * 60 * 60 * 1000);
+  setTimeout(() => {
+    checkStaleness();
+    if (state.items.filter(i => i.status === 'stale').length > 0) generateSmartPush();
+  }, 2000);
+}
+
+// ─── PUSH ─────────────────────────────────────────────────
+function showPush(message) {
+  const banner = document.getElementById('push-banner');
+  document.getElementById('push-text').textContent = message;
+  banner.classList.remove('hidden');
+  setTimeout(() => banner.classList.add('hidden'), 7000);
+  if (state.notificationsGranted && Notification.permission === 'granted') {
+    new Notification('CURA', { body: message });
+  }
+}
+
+function dismissPush() { document.getElementById('push-banner').classList.add('hidden'); }
+
+// ─── NOTIFICATIONS ────────────────────────────────────────
+function checkNotificationPermission() {
+  if (!('Notification' in window)) return;
+  if (Notification.permission === 'default') document.getElementById('notif-bar').classList.remove('hidden');
+  else if (Notification.permission === 'granted') { state.notificationsGranted = true; save(); }
+}
+
+function requestNotifications() {
+  Notification.requestPermission().then(p => {
+    if (p === 'granted') {
+      state.notificationsGranted = true; save();
+      document.getElementById('notif-bar').classList.add('hidden');
+      showPush('Notifications on. Cura will come for you.');
+    }
+  });
+}
+</script>
+</body>
+</html>
