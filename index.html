@@ -387,6 +387,7 @@ let pendingScreenshot = null;
 function save() { localStorage.setItem(STATE_KEY, JSON.stringify(state)); }
 function load() {
   try { const r = localStorage.getItem(STATE_KEY); if (r) state = { ...state, ...JSON.parse(r) }; } catch(e) {}
+  state.contexts = [...DEFAULT_CONTEXTS];
 }
 
 // ─── INIT ─────────────────────────────────────────────────
@@ -862,7 +863,7 @@ function requestNotifications() {
     if (p === 'granted') {
       state.notificationsGranted = true; save();
       document.getElementById('notif-bar').classList.add('hidden');
-      showPush('Notifications on. Cura will come for you.');
+      showPush('Notifications on. Cura will come after you.');
     }
   });
 }
