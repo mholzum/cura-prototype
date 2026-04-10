@@ -487,30 +487,37 @@ function load() {
 // ─── INIT ─────────────────────────────────────────────────
 load();
 
+let appInitialized = false;
+
 supabaseClient.auth.onAuthStateChange((event, session) => {
   console.log('[cura] onAuthStateChange', event, session);
   currentSession = session;
   if (session) {
     showApp();
-    initApp();
-  } else {
+    if (!appInitialized) { appInitialized = true; initApp(); }
+  } else if (event === 'SIGNED_OUT') {
+    // Only return to sign-in on explicit sign-out.
+    // INITIAL_SESSION with null fires on every page load — don't react to it.
+    appInitialized = false;
     showSignIn();
   }
 });
 
-// If the URL hash contains an OAuth callback token, skip getSession() —
-// onAuthStateChange will fire once Supabase parses the hash.
-// Only call getSession() to restore an already-established session (no hash present).
-const hasOAuthHash = window.location.hash.includes('access_token');
-if (!hasOAuthHash) {
+// Skip getSession() if this is an auth callback — let onAuthStateChange handle
+// token exchange. Magic links use ?token_hash= (query param); OAuth uses
+// #access_token= (hash). Both must be detected.
+const isAuthCallback = window.location.hash.includes('access_token')
+  || window.location.search.includes('token_hash');
+
+if (!isAuthCallback) {
   supabaseClient.auth.getSession().then(({ data: { session } }) => {
     console.log('[cura] getSession', session);
-    currentSession = session;
-    if (session) {
+    if (session && !appInitialized) {
+      currentSession = session;
       showApp();
+      appInitialized = true;
       initApp();
     }
-    // sign-in screen is shown by default; no action needed if no session
   });
 }
 
