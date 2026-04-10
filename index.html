@@ -158,6 +158,11 @@
   .attach-btn:hover { border-color: var(--accent); color: var(--accent); }
   #file-input { display: none; }
 
+  .mic-btn { background: transparent; border: 1px solid var(--border); border-radius: 2px; color: var(--muted); padding: 8px 10px; cursor: pointer; font-size: 16px; transition: all 0.15s; line-height: 1; }
+  .mic-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .mic-btn.recording { border-color: var(--warn); color: var(--warn); animation: micPulse 1s infinite; }
+  @keyframes micPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+
   /* AI PROCESSING */
   .processing {
     display: flex; align-items: center; gap: 10px;
@@ -394,6 +399,7 @@
           <div class="capture-actions">
             <label class="attach-btn" for="file-input" title="Attach screenshot">📎</label>
             <input type="file" id="file-input" accept="image/*" onchange="handleScreenshot(event)">
+            <button class="mic-btn" id="mic-btn" onclick="toggleVoice()" title="Voice capture">🎙</button>
             <button class="btn btn-primary" onclick="capture()">CAPTURE</button>
           </div>
         </div>
@@ -1061,6 +1067,57 @@ function requestNotifications() {
       showPush('Notifications on. Cura will come after you.');
     }
   });
+}
+
+// ─── VOICE CAPTURE ────────────────────────────────────────
+let recognition = null;
+let isRecording = false;
+
+function toggleVoice() {
+  if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+    showPush('Voice capture not supported in this browser. Try Chrome or Safari.');
+    return;
+  }
+  isRecording ? stopVoice() : startVoice();
+}
+
+function startVoice() {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  recognition = new SpeechRecognition();
+  recognition.continuous = true;
+  recognition.interimResults = true;
+  recognition.lang = 'en-US';
+
+  const btn = document.getElementById('mic-btn');
+  const textarea = document.getElementById('capture-input');
+  const baseText = textarea.value;
+
+  recognition.onstart = () => {
+    isRecording = true;
+    btn.classList.add('recording');
+    btn.textContent = '⏹';
+  };
+
+  recognition.onresult = (e) => {
+    let transcript = '';
+    for (let i = 0; i < e.results.length; i++) {
+      transcript += e.results[i][0].transcript;
+    }
+    textarea.value = baseText + (baseText ? ' ' : '') + transcript;
+  };
+
+  recognition.onerror = () => stopVoice();
+  recognition.onend = () => stopVoice();
+
+  recognition.start();
+}
+
+function stopVoice() {
+  if (recognition) { recognition.stop(); recognition = null; }
+  isRecording = false;
+  const btn = document.getElementById('mic-btn');
+  btn.classList.remove('recording');
+  btn.textContent = '🎙';
 }
 </script>
 </body>
