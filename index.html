@@ -77,8 +77,12 @@
   }
 
   .signin-form { display: flex; flex-direction: column; align-items: center; gap: 12px; width: 100%; max-width: 320px; }
-  .signin-form input[type="email"] { text-align: center; font-size: 14px; }
+  .signin-form input[type="email"], .signin-form input[type="password"] { text-align: center; font-size: 14px; }
   .signin-sent { font-family: var(--font-mono); font-size: 11px; color: var(--closed); letter-spacing: 0.08em; text-align: center; }
+  .signin-or { font-family: var(--font-mono); font-size: 10px; color: var(--muted); letter-spacing: 0.1em; }
+  .signin-bypass { display: flex; flex-direction: column; align-items: center; gap: 10px; width: 100%; max-width: 320px; }
+  .signin-bypass-toggle { font-family: var(--font-mono); font-size: 10px; color: var(--muted); letter-spacing: 0.08em; background: none; border: none; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+  .signin-bypass-toggle:hover { color: var(--accent); }
 
   .signin-note {
     font-family: var(--font-mono);
@@ -307,6 +311,12 @@
     <p id="magic-sent" class="signin-sent hidden">// check your email — link sent.</p>
   </div>
   <p class="signin-note">// no password. just a link. authentication via Supabase.</p>
+  <span class="signin-or">— or —</span>
+  <button class="signin-bypass-toggle" onclick="toggleBypass()">use API key instead</button>
+  <div class="signin-bypass hidden" id="bypass-panel">
+    <input type="password" id="bypass-key" placeholder="sk-ant-..." autocomplete="off" onkeydown="if(event.key==='Enter')useApiKey()">
+    <button class="btn btn-primary btn-full" onclick="useApiKey()">USE API KEY</button>
+  </div>
 </div>
 
 <div class="app hidden" id="app-root">
@@ -439,6 +449,26 @@ const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
 });
 
 let currentSession = null;
+let bypassApiKey = null; // in-memory only, never persisted
+
+// ── Synchronous session check ──────────────────────────────
+// Supabase stores the session in localStorage under this key.
+// Read it synchronously so we can show the app immediately on
+// reload without waiting for the async getSession() call.
+(function checkStoredSession() {
+  try {
+    const stored = localStorage.getItem('sb-mgxhxilarhtfibjtwpbc-auth-token');
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      const exp = parsed?.expires_at;
+      if (exp && exp * 1000 > Date.now()) {
+        // Session looks valid — show app immediately, async init will follow
+        document.getElementById('signin-screen').classList.add('hidden');
+        document.getElementById('app-root').classList.remove('hidden');
+      }
+    }
+  } catch(e) {}
+})();
 
 async function sendMagicLink() {
   const email = document.getElementById('magic-email').value.trim();
@@ -459,7 +489,24 @@ async function sendMagicLink() {
 async function signOut() {
   await supabaseClient.auth.signOut();
   currentSession = null;
+  bypassApiKey = null;
   showSignIn();
+}
+
+function toggleBypass() {
+  document.getElementById('bypass-panel').classList.toggle('hidden');
+}
+
+function useApiKey() {
+  const val = document.getElementById('bypass-key').value.trim();
+  if (!val.startsWith('sk-ant-')) {
+    alert('That doesn\'t look like a valid Anthropic key.');
+    return;
+  }
+  bypassApiKey = val;
+  document.getElementById('bypass-key').value = '';
+  showApp();
+  if (!appInitialized) { appInitialized = true; initApp(); }
 }
 
 function showSignIn() {
@@ -579,13 +626,16 @@ function removeContextFromManager(ctx) {
 }
 
 async function callClaude(systemPrompt, userMessage) {
-  if (!currentSession) return null;
+  if (!currentSession && !bypassApiKey) return null;
   try {
-    const res = await fetch(PROXY_URL, {
+    const usingProxy = !!currentSession;
+    const res = await fetch(usingProxy ? PROXY_URL : 'https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${currentSession.access_token}`
+        ...(usingProxy
+          ? { 'Authorization': `Bearer ${currentSession.access_token}` }
+          : { 'x-api-key': bypassApiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' })
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-6',
@@ -706,7 +756,7 @@ async function capture() {
   box.style.borderColor = 'var(--closed)';
   setTimeout(() => box.style.borderColor = '', 600);
 
-  if (currentSession && text && state.instantInsight) {
+  if ((currentSession || bypassApiKey) && text && state.instantInsight) {
     processWithAI(item);
   }
 }
@@ -775,8 +825,8 @@ Their other open cycles:\n${openItems || 'none yet'}`;
 
 // ─── WEEKLY DIGEST ────────────────────────────────────────
 async function generateDigest() {
-  if (!currentSession) {
-    showPush('Sign in to generate your digest.');
+  if (!currentSession && !bypassApiKey) {
+    showPush('Sign in or add an API key to generate your digest.');
     return;
   }
 
@@ -910,7 +960,7 @@ function closeItem(id) {
     updateScore();
 
     const closedCount = state.items.filter(i => i.status === 'closed').length;
-    if (currentSession) {
+    if (currentSession || bypassApiKey) {
       generateClosePush(item, closedCount);
     } else {
       showPush(`Cycle closed. Iron moving. ${closedCount} closed total.`);
@@ -954,7 +1004,7 @@ function scheduleStaleCheck() {
 
 // ─── SMART PUSH ───────────────────────────────────────────
 async function generateSmartPush() {
-  if (!currentSession) { showPush(getBasicPush()); return; }
+  if (!currentSession && !bypassApiKey) { showPush(getBasicPush()); return; }
 
   const open = state.items.filter(i => i.status !== 'closed');
   if (open.length === 0) return;
