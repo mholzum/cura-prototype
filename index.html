@@ -279,6 +279,7 @@
       </svg>
     </div>
     <div class="header-right">
+      <button class="ai-status" id="instant-insight-btn" onclick="toggleInstantInsight()">INSIGHT: OFF</button>
       <button class="ai-status" id="ai-status-btn" onclick="toggleAPISetup()">AI: OFF</button>
       <div class="cycle-score">
         <div class="numbers">OPEN / CLOSED</div>
@@ -378,7 +379,7 @@
 // ─── STATE ───────────────────────────────────────────────
 const STATE_KEY = 'cura_v2';
 const DEFAULT_CONTEXTS = ["Aphrodite", "Feybl", "Built to Last", "Cura", "Old Town", "POLLY"];
-let state = { setup: false, contexts: [...DEFAULT_CONTEXTS], items: [], notificationsGranted: false };
+let state = { setup: false, contexts: [...DEFAULT_CONTEXTS], items: [], notificationsGranted: false, instantInsight: false };
 let apiKey = null; // never persisted
 let activeCtx = null;
 let currentFilter = 'all';
@@ -398,6 +399,7 @@ window.addEventListener('DOMContentLoaded', () => {
     document.getElementById('onboarding').classList.add('hidden');
     document.getElementById('main-app').classList.remove('hidden');
     document.querySelector('.app').style.justifyContent = 'flex-start';
+    document.getElementById('instant-insight-btn').textContent = state.instantInsight ? 'INSIGHT: ON' : 'INSIGHT: OFF';
     renderContextTags();
     renderFeed();
     updateScore();
@@ -411,6 +413,12 @@ window.addEventListener('DOMContentLoaded', () => {
 function toggleAPISetup() {
   const panel = document.getElementById('api-setup');
   panel.classList.toggle('hidden');
+}
+
+function toggleInstantInsight() {
+  state.instantInsight = !state.instantInsight;
+  save();
+  document.getElementById('instant-insight-btn').textContent = state.instantInsight ? 'INSIGHT: ON' : 'INSIGHT: OFF';
 }
 
 function saveAPIKey() {
@@ -554,8 +562,8 @@ async function capture() {
   box.style.borderColor = 'var(--closed)';
   setTimeout(() => box.style.borderColor = '', 600);
 
-  // AI processing
-  if (apiKey && text) {
+  // AI processing — only if instant insight is enabled
+  if (apiKey && text && state.instantInsight) {
     processWithAI(item);
   }
 }
