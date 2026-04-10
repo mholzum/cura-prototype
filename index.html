@@ -281,6 +281,7 @@
     <div class="header-right">
       <button class="ai-status" id="instant-insight-btn" onclick="toggleInstantInsight()">INSIGHT: OFF</button>
       <button class="ai-status" id="ai-status-btn" onclick="toggleAPISetup()">AI: OFF</button>
+      <button class="ai-status" onclick="toggleContextManager()">CONTEXTS</button>
       <div class="cycle-score">
         <div class="numbers">OPEN / CLOSED</div>
         <div class="ratio">
@@ -320,6 +321,17 @@
     </div>
     <div class="context-chips" id="context-chips"></div>
     <button class="btn btn-primary btn-full hidden" id="start-btn" onclick="startApp()">START →</button>
+  </div>
+
+  <!-- CONTEXT MANAGER -->
+  <div class="api-setup hidden" id="context-manager">
+    <h2>CONTEXTS</h2>
+    <p>The worlds you're running. Everything gets filtered through these.</p>
+    <div class="api-row" style="margin-bottom:12px;">
+      <input type="text" id="ctx-manager-input" placeholder="Add a context..." maxlength="30" onkeydown="if(event.key==='Enter')addContextFromManager()">
+      <button class="btn btn-primary" onclick="addContextFromManager()">ADD</button>
+    </div>
+    <div class="context-chips" id="context-manager-chips"></div>
   </div>
 
   <!-- MAIN APP -->
@@ -419,6 +431,38 @@ function toggleInstantInsight() {
   state.instantInsight = !state.instantInsight;
   save();
   document.getElementById('instant-insight-btn').textContent = state.instantInsight ? 'INSIGHT: ON' : 'INSIGHT: OFF';
+}
+
+function toggleContextManager() {
+  const panel = document.getElementById('context-manager');
+  const isHidden = panel.classList.toggle('hidden');
+  if (!isHidden) renderContextManagerChips();
+}
+
+function renderContextManagerChips() {
+  const el = document.getElementById('context-manager-chips');
+  el.innerHTML = state.contexts.map(c =>
+    `<div class="chip">${c}<span class="remove" onclick="removeContextFromManager('${c.replace(/'/g,"\\'")}')">×</span></div>`
+  ).join('');
+}
+
+function addContextFromManager() {
+  const input = document.getElementById('ctx-manager-input');
+  const val = input.value.trim();
+  if (!val || state.contexts.includes(val)) { input.value = ''; return; }
+  state.contexts.push(val);
+  input.value = '';
+  save();
+  renderContextManagerChips();
+  renderContextTags();
+}
+
+function removeContextFromManager(ctx) {
+  state.contexts = state.contexts.filter(c => c !== ctx);
+  if (activeCtx === ctx) activeCtx = state.contexts[0] || null;
+  save();
+  renderContextManagerChips();
+  renderContextTags();
 }
 
 function saveAPIKey() {
