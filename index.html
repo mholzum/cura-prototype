@@ -119,6 +119,13 @@
   .onboarding { background: var(--surface); border: 1px solid var(--border); border-radius: 2px; padding: 28px; margin-bottom: 24px; }
   .onboarding h2 { font-family: var(--font-display); font-size: 24px; letter-spacing: 3px; color: var(--accent); margin-bottom: 10px; }
   .onboarding p { font-size: 13px; line-height: 1.7; color: var(--muted); margin-bottom: 20px; font-style: italic; }
+
+  /* ARCHETYPE PICKER */
+  .archetype-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 8px; }
+  .archetype-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 2px; padding: 18px 16px; cursor: pointer; transition: all 0.15s; text-align: left; width: 100%; }
+  .archetype-card:hover { border-color: var(--accent); }
+  .archetype-card .a-label { font-family: var(--font-display); font-size: 22px; letter-spacing: 3px; color: var(--text); display: block; }
+  .archetype-card .a-hint { font-family: var(--font-mono); font-size: 10px; color: var(--muted); letter-spacing: 0.05em; margin-top: 6px; display: block; line-height: 1.5; }
   .context-input-row { display: flex; gap: 8px; margin-bottom: 12px; }
   .context-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; min-height: 36px; }
   .chip { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; padding: 6px 12px; background: var(--surface2); border: 1px solid var(--border); border-radius: 2px; color: var(--text); cursor: pointer; transition: all 0.15s; display: flex; align-items: center; gap: 6px; }
@@ -368,8 +375,15 @@
     <button onclick="requestNotifications()">ENABLE</button>
   </div>
 
+  <!-- ARCHETYPE PICKER -->
+  <div class="onboarding hidden" id="archetype-picker">
+    <h2>WHAT ARE YOU?</h2>
+    <p>Pick the frame that fits closest. You can edit everything after.</p>
+    <div class="archetype-grid" id="archetype-grid"></div>
+  </div>
+
   <!-- ONBOARDING -->
-  <div class="onboarding" id="onboarding">
+  <div class="onboarding hidden" id="onboarding">
     <h2>YOUR CONTEXTS</h2>
     <p>What worlds are you running right now? These become the lenses everything gets filtered through.</p>
     <div class="context-input-row">
@@ -541,7 +555,8 @@ const DEFAULT_CONTEXTS = [
   { name: "Old Town", description: "" },
   { name: "POLLY", description: "" }
 ];
-let state = { setup: false, contexts: DEFAULT_CONTEXTS.map(c => ({...c})), items: [], notificationsGranted: false, instantInsight: false };
+const DEV_MODE = localStorage.getItem('dev_mode') === 'true';
+let state = { setup: false, contexts: [], items: [], notificationsGranted: false, instantInsight: false };
 let activeCtx = null;
 let currentFilter = 'all';
 let pendingScreenshot = null;
@@ -551,15 +566,45 @@ function load() {
   try { const r = localStorage.getItem(STATE_KEY); if (r) state = { ...state, ...JSON.parse(r) }; } catch(e) {}
   // Migrate any legacy plain-string contexts to objects
   state.contexts = state.contexts.map(c => typeof c === 'string' ? { name: c, description: '' } : c);
-  // Merge with DEFAULT_CONTEXTS — preserve any descriptions the user has saved
-  const savedDescs = Object.fromEntries(state.contexts.map(c => [c.name, c.description || '']));
-  state.contexts = DEFAULT_CONTEXTS.map(c => ({ ...c, description: savedDescs[c.name] ?? '' }));
+  if (DEV_MODE) {
+    // Dev mode: always load Mark's default contexts, preserving saved descriptions
+    const savedDescs = Object.fromEntries(state.contexts.map(c => [c.name, c.description || '']));
+    state.contexts = DEFAULT_CONTEXTS.map(c => ({ ...c, description: savedDescs[c.name] ?? '' }));
+    state.setup = true;
+  }
 }
 
 function buildContextBlock() {
   return state.contexts.map(c =>
     c.description ? `- ${c.name}: ${c.description}` : `- ${c.name}`
   ).join('\n');
+}
+
+// ─── ARCHETYPES ───────────────────────────────────────────
+const ARCHETYPES = {
+  founder:  { label: 'FOUNDER',  hint: 'Building a company or product',       contexts: ['Company', 'Product', 'Revenue', 'Team', 'Personal'] },
+  creator:  { label: 'CREATOR',  hint: 'Making content, art, or media',        contexts: ['Projects', 'Audience', 'Revenue', 'Creative', 'Personal'] },
+  operator: { label: 'OPERATOR', hint: 'Running systems, teams, or operations', contexts: ['Work', 'Projects', 'Finance', 'Home', 'Personal'] },
+  explorer: { label: 'EXPLORER', hint: 'Figuring it out',                       contexts: ['Projects', 'Learning', 'Finance', 'Relationships', 'Personal'] }
+};
+
+function showArchetypePicker() {
+  document.getElementById('archetype-grid').innerHTML = Object.entries(ARCHETYPES).map(([key, a]) =>
+    `<button class="archetype-card" onclick="selectArchetype('${key}')">
+      <span class="a-label">${a.label}</span>
+      <span class="a-hint">${a.hint}</span>
+    </button>`
+  ).join('');
+  document.getElementById('archetype-picker').classList.remove('hidden');
+}
+
+function selectArchetype(key) {
+  const archetype = ARCHETYPES[key];
+  state.contexts = archetype.contexts.map(name => ({ name, description: '' }));
+  save();
+  document.getElementById('archetype-picker').classList.add('hidden');
+  document.getElementById('onboarding').classList.remove('hidden');
+  renderChips();
 }
 
 // ─── INIT ─────────────────────────────────────────────────
@@ -600,8 +645,8 @@ if (!isAuthCallback) {
 }
 
 function initApp() {
-  if (state.setup || state.contexts.length > 0) {
-    if (!state.setup) { state.setup = true; save(); }
+  if (state.setup) {
+    document.getElementById('archetype-picker').classList.add('hidden');
     document.getElementById('onboarding').classList.add('hidden');
     document.getElementById('main-app').classList.remove('hidden');
     document.getElementById('app-root').style.justifyContent = 'flex-start';
@@ -612,6 +657,13 @@ function initApp() {
     checkNotificationPermission();
     scheduleStaleCheck();
     schedulePushReminder();
+  } else if (state.contexts.length > 0) {
+    // Archetype picked but START not yet clicked — resume context editor
+    document.getElementById('archetype-picker').classList.add('hidden');
+    document.getElementById('onboarding').classList.remove('hidden');
+    renderChips();
+  } else {
+    showArchetypePicker();
   }
 }
 
