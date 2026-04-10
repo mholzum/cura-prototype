@@ -493,6 +493,7 @@ function load() {
 load();
 
 supabaseClient.auth.onAuthStateChange((event, session) => {
+  console.log('[cura] onAuthStateChange', event, session);
   currentSession = session;
   if (session) {
     showApp();
@@ -502,14 +503,21 @@ supabaseClient.auth.onAuthStateChange((event, session) => {
   }
 });
 
-supabaseClient.auth.getSession().then(({ data: { session } }) => {
-  currentSession = session;
-  if (session) {
-    showApp();
-    initApp();
-  }
-  // if no session, sign-in screen is already visible by default
-});
+// If the URL hash contains an OAuth callback token, skip getSession() —
+// onAuthStateChange will fire once Supabase parses the hash.
+// Only call getSession() to restore an already-established session (no hash present).
+const hasOAuthHash = window.location.hash.includes('access_token');
+if (!hasOAuthHash) {
+  supabaseClient.auth.getSession().then(({ data: { session } }) => {
+    console.log('[cura] getSession', session);
+    currentSession = session;
+    if (session) {
+      showApp();
+      initApp();
+    }
+    // sign-in screen is shown by default; no action needed if no session
+  });
+}
 
 function initApp() {
   if (state.setup || state.contexts.length > 0) {
