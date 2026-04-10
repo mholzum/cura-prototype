@@ -124,6 +124,12 @@
   .chip { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; padding: 6px 12px; background: var(--surface2); border: 1px solid var(--border); border-radius: 2px; color: var(--text); cursor: pointer; transition: all 0.15s; display: flex; align-items: center; gap: 6px; }
   .chip:hover { border-color: var(--accent); color: var(--accent); }
   .chip .remove { color: var(--muted); font-size: 14px; line-height: 1; }
+  .ctx-item { margin-bottom: 14px; }
+  .ctx-item .chip { cursor: default; }
+  .ctx-item .chip:hover { border-color: var(--border); color: var(--text); }
+  .ctx-desc { font-family: var(--font-mono); font-size: 11px; color: var(--muted); background: transparent; border: 1px solid var(--border); border-radius: 2px; padding: 8px 10px; width: 100%; resize: none; line-height: 1.5; height: 52px; margin-top: 6px; }
+  .ctx-desc:focus { border-color: var(--accent); color: var(--text); }
+  .ctx-desc::placeholder { font-style: italic; }
 
   /* INPUTS */
   input[type="text"], input[type="password"], textarea {
@@ -527,8 +533,15 @@ function showApp() {
 
 // ─── STATE ───────────────────────────────────────────────
 const STATE_KEY = 'cura_v2';
-const DEFAULT_CONTEXTS = ["Aphrodite", "Feybl", "Built to Last", "Cura", "Old Town", "POLLY"];
-let state = { setup: false, contexts: [...DEFAULT_CONTEXTS], items: [], notificationsGranted: false, instantInsight: false };
+const DEFAULT_CONTEXTS = [
+  { name: "Aphrodite", description: "" },
+  { name: "Feybl", description: "" },
+  { name: "Built to Last", description: "" },
+  { name: "Cura", description: "" },
+  { name: "Old Town", description: "" },
+  { name: "POLLY", description: "" }
+];
+let state = { setup: false, contexts: DEFAULT_CONTEXTS.map(c => ({...c})), items: [], notificationsGranted: false, instantInsight: false };
 let activeCtx = null;
 let currentFilter = 'all';
 let pendingScreenshot = null;
@@ -536,7 +549,17 @@ let pendingScreenshot = null;
 function save() { localStorage.setItem(STATE_KEY, JSON.stringify(state)); }
 function load() {
   try { const r = localStorage.getItem(STATE_KEY); if (r) state = { ...state, ...JSON.parse(r) }; } catch(e) {}
-  state.contexts = [...DEFAULT_CONTEXTS];
+  // Migrate any legacy plain-string contexts to objects
+  state.contexts = state.contexts.map(c => typeof c === 'string' ? { name: c, description: '' } : c);
+  // Merge with DEFAULT_CONTEXTS — preserve any descriptions the user has saved
+  const savedDescs = Object.fromEntries(state.contexts.map(c => [c.name, c.description || '']));
+  state.contexts = DEFAULT_CONTEXTS.map(c => ({ ...c, description: savedDescs[c.name] ?? '' }));
+}
+
+function buildContextBlock() {
+  return state.contexts.map(c =>
+    c.description ? `- ${c.name}: ${c.description}` : `- ${c.name}`
+  ).join('\n');
 }
 
 // ─── INIT ─────────────────────────────────────────────────
@@ -607,16 +630,25 @@ function toggleContextManager() {
 
 function renderContextManagerChips() {
   const el = document.getElementById('context-manager-chips');
-  el.innerHTML = state.contexts.map(c =>
-    `<div class="chip">${c}<span class="remove" onclick="removeContextFromManager('${c.replace(/'/g,"\\'")}')">×</span></div>`
-  ).join('');
+  el.innerHTML = state.contexts.map(c => {
+    const safeName = c.name.replace(/'/g, "\\'");
+    return `<div class="ctx-item">
+      <div class="chip">${escapeHtml(c.name)}<span class="remove" onclick="removeContextFromManager('${safeName}')">×</span></div>
+      <textarea class="ctx-desc" placeholder="Describe this world in 1-2 sentences..." onchange="saveContextDescription('${safeName}', this.value)">${escapeHtml(c.description || '')}</textarea>
+    </div>`;
+  }).join('');
+}
+
+function saveContextDescription(name, desc) {
+  const ctx = state.contexts.find(c => c.name === name);
+  if (ctx) { ctx.description = desc; save(); }
 }
 
 function addContextFromManager() {
   const input = document.getElementById('ctx-manager-input');
   const val = input.value.trim();
-  if (!val || state.contexts.includes(val)) { input.value = ''; return; }
-  state.contexts.push(val);
+  if (!val || state.contexts.find(c => c.name === val)) { input.value = ''; return; }
+  state.contexts.push({ name: val, description: '' });
   input.value = '';
   save();
   renderContextManagerChips();
@@ -624,8 +656,8 @@ function addContextFromManager() {
 }
 
 function removeContextFromManager(ctx) {
-  state.contexts = state.contexts.filter(c => c !== ctx);
-  if (activeCtx === ctx) activeCtx = state.contexts[0] || null;
+  state.contexts = state.contexts.filter(c => c.name !== ctx);
+  if (activeCtx === ctx) activeCtx = state.contexts[0]?.name || null;
   save();
   renderContextManagerChips();
   renderContextTags();
@@ -659,8 +691,8 @@ async function callClaude(systemPrompt, userMessage) {
 function addContext() {
   const input = document.getElementById('ctx-input');
   const val = input.value.trim();
-  if (!val || state.contexts.includes(val)) { input.value = ''; return; }
-  state.contexts.push(val);
+  if (!val || state.contexts.find(c => c.name === val)) { input.value = ''; return; }
+  state.contexts.push({ name: val, description: '' });
   input.value = '';
   renderChips();
   save();
@@ -669,7 +701,7 @@ function addContext() {
 document.getElementById('ctx-input').addEventListener('keydown', e => { if (e.key === 'Enter') addContext(); });
 
 function removeContext(ctx) {
-  state.contexts = state.contexts.filter(c => c !== ctx);
+  state.contexts = state.contexts.filter(c => c.name !== ctx);
   renderChips();
   save();
 }
@@ -677,7 +709,7 @@ function removeContext(ctx) {
 function renderChips() {
   const el = document.getElementById('context-chips');
   el.innerHTML = state.contexts.map(c =>
-    `<div class="chip">${c}<span class="remove" onclick="removeContext('${c.replace(/'/g,"\\'")}')">×</span></div>`
+    `<div class="chip">${escapeHtml(c.name)}<span class="remove" onclick="removeContext('${c.name.replace(/'/g,"\\'")}')">×</span></div>`
   ).join('');
   const btn = document.getElementById('start-btn');
   btn.classList.toggle('hidden', state.contexts.length === 0);
@@ -690,7 +722,7 @@ function startApp() {
   document.getElementById('onboarding').classList.add('hidden');
   document.getElementById('main-app').classList.remove('hidden');
   document.getElementById('app-root').style.justifyContent = 'flex-start';
-  activeCtx = state.contexts[0];
+  activeCtx = state.contexts[0].name;
   renderContextTags();
   renderFeed();
   updateScore();
@@ -701,9 +733,9 @@ function startApp() {
 // ─── CAPTURE ──────────────────────────────────────────────
 function renderContextTags() {
   const el = document.getElementById('active-contexts');
-  if (!activeCtx) activeCtx = state.contexts[0];
+  if (!activeCtx) activeCtx = state.contexts[0]?.name;
   el.innerHTML = state.contexts.map(c =>
-    `<button class="ctx-tag ${c === activeCtx ? 'active' : ''}" onclick="setActiveCtx('${c.replace(/'/g,"\\'")}', this)">${c}</button>`
+    `<button class="ctx-tag ${c.name === activeCtx ? 'active' : ''}" onclick="setActiveCtx('${c.name.replace(/'/g,"\\'")}', this)">${escapeHtml(c.name)}</button>`
   ).join('');
 }
 
@@ -790,7 +822,8 @@ async function processWithAI(item) {
 
   const system = `You are Cura — a knowing, wise executive assistant embedded in a personal information system. You are not just intelligent, you are wise. You understand timing, urgency, and human psychology. You know when to push and when to wait.
 
-The user's active contexts are: ${state.contexts.join(', ')}.
+The user's active contexts:
+${buildContextBlock()}
 
 Your job: analyze each captured item and return a JSON response with exactly these fields:
 - insight: A single sharp sentence. Not a summary — a perspective. What does this item mean in the context of their life right now? What action does it imply? What pattern does it continue? Be direct, be specific, be occasionally uncomfortable if the truth requires it. Max 20 words.
@@ -816,7 +849,7 @@ Their other open cycles:\n${openItems || 'none yet'}`;
       if (idx !== -1) {
         state.items[idx].insight = parsed.insight || null;
         state.items[idx].urgency = parsed.urgency || 'normal';
-        if (parsed.suggestedContext && state.contexts.includes(parsed.suggestedContext)) {
+        if (parsed.suggestedContext && state.contexts.find(c => c.name === parsed.suggestedContext)) {
           state.items[idx].context = parsed.suggestedContext;
         }
         save();
@@ -857,7 +890,8 @@ Generate a weekly digest. Be a mirror, not a cheerleader. Point to the patterns.
 Write in second person. Short paragraphs. Direct sentences. No bullet points. Max 200 words.`;
 
   const userMsg = `Here are their cycles from the past week:
-Contexts: ${state.contexts.join(', ')}
+Contexts:
+${buildContextBlock()}
 Open: ${open.length} | Stale: ${stale.length} | Closed: ${closed.length}
 
 All items:
