@@ -9,6 +9,7 @@
 <title>CURA</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=DM+Mono:wght@300;400&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <style>
   :root {
     --bg: #0f0e0c;
@@ -48,6 +49,59 @@
     opacity: 0.4;
   }
 
+  /* SIGN-IN SCREEN */
+  .signin-screen {
+    position: fixed;
+    inset: 0;
+    background: var(--bg);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 28px;
+    z-index: 500;
+  }
+
+  .signin-tagline {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    color: var(--muted);
+    text-align: center;
+  }
+
+  .signin-divider {
+    width: 1px;
+    height: 40px;
+    background: var(--border);
+  }
+
+  .btn-google {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    color: var(--text);
+    font-family: var(--font-display);
+    font-size: 16px;
+    letter-spacing: 3px;
+    padding: 14px 28px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .btn-google:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-google svg { flex-shrink: 0; }
+
+  .signin-note {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.05em;
+    text-align: center;
+  }
+
   .app { max-width: 680px; margin: 0 auto; padding: 0 20px 120px; display: flex; flex-direction: column; justify-content: center; min-height: calc(100vh - 80px); }
 
   /* HEADER */
@@ -70,28 +124,6 @@
   .cycle-score .ratio { font-family: var(--font-display); font-size: 28px; letter-spacing: 2px; line-height: 1; }
   .ratio-open { color: var(--accent); }
   .ratio-closed { color: var(--closed); }
-
-  /* API KEY SETUP */
-  .api-setup {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 2px;
-    padding: 28px;
-    margin-bottom: 24px;
-  }
-
-  .api-setup h2 { font-family: var(--font-display); font-size: 24px; letter-spacing: 3px; color: var(--accent); margin-bottom: 10px; }
-  .api-setup p { font-size: 13px; line-height: 1.7; color: var(--muted); font-style: italic; margin-bottom: 16px; }
-
-  .api-row { display: flex; gap: 8px; }
-
-  .api-note {
-    font-family: var(--font-mono);
-    font-size: 10px;
-    color: var(--muted);
-    margin-top: 8px;
-    letter-spacing: 0.05em;
-  }
 
   /* ONBOARDING */
   .onboarding { background: var(--surface); border: 1px solid var(--border); border-radius: 2px; padding: 28px; margin-bottom: 24px; }
@@ -229,6 +261,12 @@
   .digest-body { font-size: 14px; line-height: 1.8; color: var(--text); white-space: pre-wrap; }
   .digest-close { margin-top: 16px; }
 
+  /* CONTEXT MANAGER panel */
+  .ctx-panel { background: var(--surface); border: 1px solid var(--border); border-radius: 2px; padding: 28px; margin-bottom: 24px; }
+  .ctx-panel h2 { font-family: var(--font-display); font-size: 24px; letter-spacing: 3px; color: var(--accent); margin-bottom: 10px; }
+  .ctx-panel p { font-size: 13px; line-height: 1.7; color: var(--muted); margin-bottom: 16px; font-style: italic; }
+  .api-row { display: flex; gap: 8px; }
+
   /* PUSH BANNER */
   .push-banner { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--surface); border: 1px solid var(--accent); border-radius: 2px; padding: 14px 20px; display: flex; align-items: center; gap: 14px; max-width: 520px; width: calc(100% - 40px); z-index: 100; box-shadow: 0 8px 32px rgba(0,0,0,0.6); animation: bannerIn 0.3s ease; }
   @keyframes bannerIn { from { opacity: 0; transform: translateX(-50%) translateY(16px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
@@ -262,7 +300,34 @@
 </style>
 </head>
 <body>
-<div class="app">
+
+<!-- SIGN-IN SCREEN -->
+<div id="signin-screen" class="signin-screen">
+  <svg width="160" height="52" viewBox="0 0 160 52" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <text x="0" y="46" font-family="Bebas Neue, sans-serif" font-size="52" fill="#c9a96e" opacity="0.5">C</text>
+    <text x="31" y="46" font-family="Bebas Neue, sans-serif" font-size="52" fill="#e8e4de" opacity="0.58">U</text>
+    <text x="62" y="46" font-family="Bebas Neue, sans-serif" font-size="52" fill="#e8e4de" opacity="0.78">R</text>
+    <text x="91" y="46" font-family="Bebas Neue, sans-serif" font-size="52" fill="#7a9eb5" opacity="1">A</text>
+    <line x1="2" y1="50" x2="26" y2="50" stroke="#c9a96e" stroke-width="1" opacity="0.35"/>
+    <line x1="31" y1="50" x2="58" y2="50" stroke="#e8e4de" stroke-width="1.2" opacity="0.36"/>
+    <line x1="62" y1="50" x2="88" y2="50" stroke="#e8e4de" stroke-width="1.5" opacity="0.58"/>
+    <line x1="91" y1="50" x2="128" y2="50" stroke="#7a9eb5" stroke-width="2.5" opacity="1"/>
+  </svg>
+  <p class="signin-tagline">// your personal information system</p>
+  <div class="signin-divider"></div>
+  <button class="btn-google" onclick="signInWithGoogle()">
+    <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/>
+      <path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" fill="#34A853"/>
+      <path d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/>
+      <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
+    </svg>
+    SIGN IN WITH GOOGLE
+  </button>
+  <p class="signin-note">// authentication via Supabase. nothing stored without your knowledge.</p>
+</div>
+
+<div class="app hidden" id="app-root">
 
   <!-- HEADER -->
   <div class="header">
@@ -280,8 +345,8 @@
     </div>
     <div class="header-right">
       <button class="ai-status" id="instant-insight-btn" onclick="toggleInstantInsight()">INSIGHT: OFF</button>
-      <button class="ai-status" id="ai-status-btn" onclick="toggleAPISetup()">AI: OFF</button>
       <button class="ai-status" onclick="toggleContextManager()">CONTEXTS</button>
+      <button class="ai-status" onclick="signOut()">SIGN OUT</button>
       <div class="cycle-score">
         <div class="numbers">OPEN / CLOSED</div>
         <div class="ratio">
@@ -300,17 +365,6 @@
     <button onclick="requestNotifications()">ENABLE</button>
   </div>
 
-  <!-- API KEY SETUP -->
-  <div class="api-setup hidden" id="api-setup">
-    <h2>CONNECT AI</h2>
-    <p>Your API key lives only in this browser session — never sent anywhere except directly to Anthropic. Get yours at console.anthropic.com.</p>
-    <div class="api-row">
-      <input type="password" id="api-key-input" placeholder="sk-ant-..." autocomplete="off">
-      <button class="btn btn-primary" onclick="saveAPIKey()">CONNECT</button>
-    </div>
-    <div class="api-note">// stored in memory only. clears on tab close.</div>
-  </div>
-
   <!-- ONBOARDING -->
   <div class="onboarding" id="onboarding">
     <h2>YOUR CONTEXTS</h2>
@@ -324,7 +378,7 @@
   </div>
 
   <!-- CONTEXT MANAGER -->
-  <div class="api-setup hidden" id="context-manager">
+  <div class="ctx-panel hidden" id="context-manager">
     <h2>CONTEXTS</h2>
     <p>The worlds you're running. Everything gets filtered through these.</p>
     <div class="api-row" style="margin-bottom:12px;">
@@ -388,11 +442,43 @@
 </div>
 
 <script>
+// ─── SUPABASE ─────────────────────────────────────────────
+const SUPABASE_URL = 'https://mgxhxilarhtfibjtwpbc.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1neGh4aWxhcmh0ZmlianR3cGJjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU3OTEyOTAsImV4cCI6MjA5MTM2NzI5MH0.zsS6hM3nR6znc4fXx3FiIKiXlP7aL7DAa6w2PbN9_A8';
+const PROXY_URL = 'https://mgxhxilarhtfibjtwpbc.supabase.co/functions/v1/anthropic-proxy';
+
+const { createClient } = supabase;
+const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+let currentSession = null;
+
+function signInWithGoogle() {
+  supabaseClient.auth.signInWithOAuth({
+    provider: 'google',
+    options: { redirectTo: window.location.href }
+  });
+}
+
+async function signOut() {
+  await supabaseClient.auth.signOut();
+  currentSession = null;
+  showSignIn();
+}
+
+function showSignIn() {
+  document.getElementById('signin-screen').classList.remove('hidden');
+  document.getElementById('app-root').classList.add('hidden');
+}
+
+function showApp() {
+  document.getElementById('signin-screen').classList.add('hidden');
+  document.getElementById('app-root').classList.remove('hidden');
+}
+
 // ─── STATE ───────────────────────────────────────────────
 const STATE_KEY = 'cura_v2';
 const DEFAULT_CONTEXTS = ["Aphrodite", "Feybl", "Built to Last", "Cura", "Old Town", "POLLY"];
 let state = { setup: false, contexts: [...DEFAULT_CONTEXTS], items: [], notificationsGranted: false, instantInsight: false };
-let apiKey = null; // never persisted
 let activeCtx = null;
 let currentFilter = 'all';
 let pendingScreenshot = null;
@@ -405,12 +491,32 @@ function load() {
 
 // ─── INIT ─────────────────────────────────────────────────
 load();
-window.addEventListener('DOMContentLoaded', () => {
+
+supabaseClient.auth.onAuthStateChange((event, session) => {
+  currentSession = session;
+  if (session) {
+    showApp();
+    initApp();
+  } else {
+    showSignIn();
+  }
+});
+
+supabaseClient.auth.getSession().then(({ data: { session } }) => {
+  currentSession = session;
+  if (session) {
+    showApp();
+    initApp();
+  }
+  // if no session, sign-in screen is already visible by default
+});
+
+function initApp() {
   if (state.setup || state.contexts.length > 0) {
     if (!state.setup) { state.setup = true; save(); }
     document.getElementById('onboarding').classList.add('hidden');
     document.getElementById('main-app').classList.remove('hidden');
-    document.querySelector('.app').style.justifyContent = 'flex-start';
+    document.getElementById('app-root').style.justifyContent = 'flex-start';
     document.getElementById('instant-insight-btn').textContent = state.instantInsight ? 'INSIGHT: ON' : 'INSIGHT: OFF';
     renderContextTags();
     renderFeed();
@@ -419,14 +525,9 @@ window.addEventListener('DOMContentLoaded', () => {
     scheduleStaleCheck();
     schedulePushReminder();
   }
-});
-
-// ─── API ──────────────────────────────────────────────────
-function toggleAPISetup() {
-  const panel = document.getElementById('api-setup');
-  panel.classList.toggle('hidden');
 }
 
+// ─── AI ──────────────────────────────────────────────────
 function toggleInstantInsight() {
   state.instantInsight = !state.instantInsight;
   save();
@@ -465,27 +566,15 @@ function removeContextFromManager(ctx) {
   renderContextTags();
 }
 
-function saveAPIKey() {
-  const val = document.getElementById('api-key-input').value.trim();
-  if (!val.startsWith('sk-ant-')) {
-    showPush('That doesn\'t look like a valid Anthropic key. Check console.anthropic.com.');
-    return;
-  }
-  apiKey = val;
-  document.getElementById('api-key-input').value = '';
-  document.getElementById('api-setup').classList.add('hidden');
-  const btn = document.getElementById('ai-status-btn');
-  btn.textContent = 'AI: ON';
-  btn.classList.add('connected');
-  showPush('AI connected. Cura is now thinking with you.');
-}
-
 async function callClaude(systemPrompt, userMessage) {
-  if (!apiKey) return null;
+  if (!currentSession) return null;
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
+    const res = await fetch(PROXY_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${currentSession.access_token}`
+      },
       body: JSON.stringify({
         model: 'claude-sonnet-4-6',
         max_tokens: 400,
@@ -532,7 +621,7 @@ function startApp() {
   save();
   document.getElementById('onboarding').classList.add('hidden');
   document.getElementById('main-app').classList.remove('hidden');
-  document.querySelector('.app').style.justifyContent = 'flex-start';
+  document.getElementById('app-root').style.justifyContent = 'flex-start';
   activeCtx = state.contexts[0];
   renderContextTags();
   renderFeed();
@@ -601,13 +690,11 @@ async function capture() {
   renderFeed();
   updateScore();
 
-  // Visual feedback
   const box = document.querySelector('.capture-box');
   box.style.borderColor = 'var(--closed)';
   setTimeout(() => box.style.borderColor = '', 600);
 
-  // AI processing — only if instant insight is enabled
-  if (apiKey && text && state.instantInsight) {
+  if (currentSession && text && state.instantInsight) {
     processWithAI(item);
   }
 }
@@ -618,7 +705,6 @@ document.getElementById('capture-input').addEventListener('keydown', e => {
 
 // ─── AI PROCESSING ────────────────────────────────────────
 async function processWithAI(item) {
-  // Show processing state
   const itemEl = document.getElementById(`item-${item.id}`);
   if (itemEl) {
     const processingEl = document.createElement('div');
@@ -651,7 +737,6 @@ Their other open cycles:\n${openItems || 'none yet'}`;
 
   const response = await callClaude(system, userMsg);
 
-  // Remove processing indicator
   const processingEl = document.getElementById(`processing-${item.id}`);
   if (processingEl) processingEl.remove();
 
@@ -668,8 +753,6 @@ Their other open cycles:\n${openItems || 'none yet'}`;
         }
         save();
         renderFeed();
-
-        // Smart push for high urgency
         if (parsed.urgency === 'high') {
           showPush(parsed.insight || 'High priority item just captured.');
         }
@@ -680,9 +763,8 @@ Their other open cycles:\n${openItems || 'none yet'}`;
 
 // ─── WEEKLY DIGEST ────────────────────────────────────────
 async function generateDigest() {
-  if (!apiKey) {
-    showPush('Connect AI first to generate your digest.');
-    toggleAPISetup();
+  if (!currentSession) {
+    showPush('Sign in to generate your digest.');
     return;
   }
 
@@ -714,7 +796,7 @@ All items:
 ${itemsSummary}`;
 
   const response = await callClaude(system, userMsg);
-  body.textContent = response || 'Could not generate digest. Check your API connection.';
+  body.textContent = response || 'Could not generate digest. Try again.';
 }
 
 function closeDigest() {
@@ -738,7 +820,6 @@ function renderFeed() {
     items = items.filter(i => i.status === currentFilter);
   }
 
-  // Sort: stale first, then open by urgency, then closed
   items.sort((a, b) => {
     const order = { stale: 0, open: 1, closed: 2 };
     if (order[a.status] !== order[b.status]) return order[a.status] - order[b.status];
@@ -817,7 +898,7 @@ function closeItem(id) {
     updateScore();
 
     const closedCount = state.items.filter(i => i.status === 'closed').length;
-    if (apiKey) {
+    if (currentSession) {
       generateClosePush(item, closedCount);
     } else {
       showPush(`Cycle closed. Iron moving. ${closedCount} closed total.`);
@@ -861,7 +942,7 @@ function scheduleStaleCheck() {
 
 // ─── SMART PUSH ───────────────────────────────────────────
 async function generateSmartPush() {
-  if (!apiKey) { showPush(getBasicPush()); return; }
+  if (!currentSession) { showPush(getBasicPush()); return; }
 
   const open = state.items.filter(i => i.status !== 'closed');
   if (open.length === 0) return;
